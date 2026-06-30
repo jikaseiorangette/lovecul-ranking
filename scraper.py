@@ -29,13 +29,19 @@ DOCS_DATA_DIR = Path("docs") / "data"
 
 def pass_age_check(page, url):
     page.goto(url, wait_until="domcontentloaded", timeout=90000)
-    time.sleep(3)
+    time.sleep(5)
     try:
-        page.click("text=はい", timeout=5000)
+        page.click("text=はい", timeout=8000)
         print(" 年齢認証: クリック成功")
-        time.sleep(3)
+        time.sleep(5)
     except:
         print(" 年齢認証: スキップ（不要または失敗）")
+    # 年齢認証後にコンテンツが読み込まれるまで待機
+    try:
+        page.wait_for_selector("li.rank-rankListItem", timeout=20000)
+        print(" 年齢認証後コンテンツ確認OK")
+    except:
+        print(" 年齢認証後コンテンツ待機タイムアウト（続行）")
 
 # ----------------------------------------
 # スクレイピング
@@ -53,7 +59,19 @@ def fetch_ranking(page):
                 time.sleep(10)
             else:
                 raise
-    time.sleep(8)
+    # 年齢認証が再表示された場合に再クリック
+    try:
+        page.click("text=はい", timeout=5000)
+        print(" ランキングページ: 年齢認証再クリック")
+        time.sleep(5)
+    except:
+        pass
+    # コンテンツが読み込まれるまで待機
+    try:
+        page.wait_for_selector("li.rank-rankListItem", timeout=20000)
+    except:
+        print(" セレクタ待機タイムアウト")
+    time.sleep(3)
 
     soup = BeautifulSoup(page.content(), "html.parser")
     works = []
@@ -144,7 +162,15 @@ def fetch_new_works(page, work_meta, today):
     print(f" 新着一覧取得中: {NEW_WORKS_URL}")
     try:
         page.goto(NEW_WORKS_URL, wait_until="domcontentloaded", timeout=60000)
-        time.sleep(5)
+        # 年齢認証が再表示された場合に再クリック
+        try:
+            page.click("text=はい", timeout=5000)
+            print(" 新着ページ: 年齢認証再クリック")
+            time.sleep(5)
+        except:
+            pass
+        page.wait_for_selector("ul.productList li", timeout=20000)
+        time.sleep(3)
     except Exception as e:
         print(f" 新着ページアクセス失敗: {e}")
         return work_meta
