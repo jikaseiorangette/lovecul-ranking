@@ -622,7 +622,18 @@ def run():
             "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         ))
 
-        # 年齢認証（最初の1回）
+        # 年齢認証クッキーを事前にセット（ボタンクリック不要にする）
+        for cookie_name in ["age_check_done", "ckcy"]:
+            for domain in [".dmm.co.jp", "lovecul.dmm.co.jp"]:
+                context.add_cookies([{
+                    "name": cookie_name,
+                    "value": "1",
+                    "domain": domain,
+                    "path": "/",
+                }])
+        print(" 年齢認証クッキーセット完了")
+
+        # 年齢認証（クッキーで突破できなかった場合の保険）
         page = context.new_page()
         pass_age_check(page, AGE_CHECK_URL)
 
