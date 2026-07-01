@@ -420,6 +420,7 @@ tbody tr:hover td{background:transparent}
 <div class="stat-sub">$stat3_sub</div>
 </div>
 </div>
+$pickup_section
 <div class="section">
 <div class="section-head">
 <span style="font-size:16px">🏆</span>
@@ -589,12 +590,116 @@ def generate_html(works, graph_data, today_str, total_works, new_today, work_met
         is_new = work_meta.get(cid, {}).get("release_date") == today
         ranking_rows.append(make_row(w, rank_change, is_new, f"wc_{i+1}"))
 
-    # 急上昇作品（前日比10位以上UP）
-    rising = [w for w in top10 if prev_map.get(w["cid"], 0) - w["rank"] >= 10]
+    import random
 
-    if rising:
+    # 急上昇作品（前日比10位以上UP、新着除く）
+    rising = [w for w in works if
+              not (work_meta.get(w["cid"], {}).get("release_date") == today) and
+              prev_map.get(w["cid"], 0) and
+              prev_map.get(w["cid"], 0) - w["rank"] >= 10]
+
+    # 新着ランクイン作品
+    new_works = [w for w in works if work_meta.get(w["cid"], {}).get("release_date") == today]
+
+    show_rising = len(rising) > 0
+    show_new_top3 = not show_rising and len(new_works) > 0
+    show_random_new = not show_rising and not show_new_top3
+
+    if show_rising:
+        pickup_works = rising
+        pickup_title = "📈 急上昇作品"
+        pickup_badge = "前日比10位以上上昇"
+    elif show_new_top3:
+        pickup_works = new_works[:3]
+        pickup_title = "✨ 新着作品"
+        pickup_badge = "本日発売・ランキング上位3件"
+    elif show_random_new:
+        today_new = [cid for cid, m in work_meta.items() if m.get("registered_date") == today]
+        if today_new:
+            random_cid = random.choice(today_new)
+            random_meta = work_meta[random_cid]
+            pickup_works = [{
+                "rank": "—",
+                "cid": random_cid,
+                "title": random_meta.get("title", ""),
+                "circle": "",
+                "cv": "",
+                "release_date": random_meta.get("release_date", ""),
+                "thumb_url": "",
+                "genres": [],
+                "is_sale": False,
+                "work_url": f"https://lovecul.dmm.co.jp/tl/-/detail/=/cid={random_cid}/",
+            }]
+            pickup_title = "✨ 新着作品"
+            pickup_badge = "本日登録"
+        else:
+            pickup_works = []
+            pickup_title = ""
+            pickup_badge = ""
+    else:
+        pickup_works = []
+        pickup_title = ""
+        pickup_badge = ""
+
+    # ピックアップセクションHTML生成
+    if pickup_works and pickup_title:
+        pickup_rows = []
+        for w in pickup_works:
+            rank_disp = w["rank"] if isinstance(w["rank"], str) else w["rank"]
+            rb = f'<span class="rb rn">{rank_disp}</span>'
+            thumb = w.get("thumb_url", "")
+            img_html = f'<img src="{thumb}" alt="" loading="lazy">' if thumb else '<div style="width:146px;height:110px;background:var(--rose-50);border-radius:8px;"></div>'
+            tags = []
+            if w.get("is_sale"):
+                tags.append('<span class="gtag gtag-sale">セール中</span>')
+            for g in w.get("genres", [])[:4]:
+                tags.append(f'<span class="gtag">{g}</span>')
+            tags_html = f'<div class="genres">{"".join(tags)}</div>' if tags else ""
+            release = w.get("release_date", "")
+            change = f'<span class="tup">▲{prev_map.get(w["cid"],0) - w["rank"]}位UP</span>' if show_rising else '<span class="tnew">🆕 新着</span>'
+            pickup_rows.append(f"""<tr>
+  <td class="thumb-wrap">
+    <span class="thumb-rank">{rb}</span>
+    <a href="{w['work_url']}" target="_blank" rel="noopener">{img_html}</a>
+  </td>
+  <td class="title-cell">
+    <div class="work-title"><a href="{w['work_url']}" target="_blank" rel="noopener">{w['title']}</a></div>
+    <div class="work-meta">{release}　{w.get('circle','')}</div>
+    {tags_html}
+  </td>
+  <td style="font-size:11px;color:var(--text-sub)">{w.get('cv','')}</td>
+  <td>{change}</td>
+</tr>""")
+
+        pickup_section = f"""<div class="section">
+<div class="section-head">
+<span style="font-size:16px">{'📈' if show_rising else '✨'}</span>
+<span class="section-title">{pickup_title}</span>
+<span class="section-badge">{pickup_badge}</span>
+</div>
+<div class="table-card">
+<table>
+<colgroup>
+<col style="width:150px"><col style="width:auto">
+<col style="width:10%"><col style="width:7%">
+</colgroup>
+<thead>
+<tr><th></th><th>タイトル / 発売日 / サークル / ジャンル</th><th>声優</th><th>{'急上昇' if show_rising else '新着'}</th></tr>
+</thead>
+<tbody>
+{"".join(pickup_rows)}
+</tbody>
+</table>
+</div>
+</div>"""
+    else:
+        pickup_section = ""
+
+    # 統計カード3つ目
+    rising_stat = [w for w in top10 if prev_map.get(w["cid"], 0) - w["rank"] >= 10]
+    if rising_stat:
         stat3_label = "📈 急上昇作品"
-        stat3_value = str(len(rising))
+        stat3_value = str(len(rising_stat))
         stat3_sub = "前日比10位以上上昇"
     else:
         stat3_label = "✨ 新着作品"
@@ -609,6 +714,7 @@ def generate_html(works, graph_data, today_str, total_works, new_today, work_met
         stat3_label=stat3_label,
         stat3_value=stat3_value,
         stat3_sub=stat3_sub,
+        pickup_section=pickup_section,
         ranking_rows="\n".join(ranking_rows),
         graph_data_json=json.dumps(graph_data, ensure_ascii=False),
     )
