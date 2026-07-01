@@ -30,18 +30,10 @@ DOCS_DATA_DIR = Path("docs") / "data"
 def pass_age_check(page, url):
     page.goto(url, wait_until="domcontentloaded", timeout=90000)
     time.sleep(5)
-    print(f" [DEBUG] URL: {page.url}")
-    soup_tmp = BeautifulSoup(page.content(), "html.parser")
-    print(f" [DEBUG] title: {soup_tmp.title.string if soup_tmp.title else 'なし'}")
-    print(f" [DEBUG] li.rank-rankListItem 件数: {len(soup_tmp.select('li.rank-rankListItem'))}")
-    print(f" [DEBUG] body snippet: {page.content()[:300]}")
     try:
         page.click("text=はい", timeout=8000)
         print(" 年齢認証: クリック成功")
         time.sleep(5)
-        print(f" [DEBUG] クリック後URL: {page.url}")
-        soup_tmp2 = BeautifulSoup(page.content(), "html.parser")
-        print(f" [DEBUG] クリック後 li.rank-rankListItem 件数: {len(soup_tmp2.select('li.rank-rankListItem'))}")
     except:
         print(" 年齢認証: スキップ（不要または失敗）")
     # 年齢認証後にコンテンツが読み込まれるまで待機
@@ -700,7 +692,7 @@ def run():
     docs_dir = Path("docs")
     docs_dir.mkdir(exist_ok=True)
     (docs_dir / "index.html").write_text(html, encoding="utf-8")
-    print(f"\n✅ docs/index.html 生成完了")
+    print(f"\n[OK] docs/index.html 生成完了")
 
 if __name__ == "__main__":
     run()
