@@ -551,7 +551,7 @@ def make_row(w, rank_change, is_new, canvas_id):
     tags_html = f'<div class="genres">{"".join(tags)}</div>' if tags else ""
 
     release = w.get("release_date", "")
-    release_span = f'<span>発売日: {release}　</span>' if release else ""
+    release_span = f'<span>{release}　</span>' if release else ""
 
     return f"""<tr>
   <td class="thumb-wrap">
