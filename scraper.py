@@ -213,6 +213,22 @@ def fetch_new_works(page, work_meta, today):
     return work_meta
 
 
+def fetch_release_date_from_detail(page, cid):
+    """詳細ページから発売日を取得する"""
+    url = f"https://lovecul.dmm.co.jp/tl/-/detail/=/cid={cid}/"
+    try:
+        page.goto(url, wait_until="domcontentloaded", timeout=30000)
+        time.sleep(2)
+        soup = BeautifulSoup(page.content(), "html.parser")
+        text = soup.get_text()
+        m = re.search(r'(\d{4})[/年](\d{1,2})[/月](\d{1,2})', text)
+        if m:
+            return f"{m.group(1)}-{int(m.group(2)):02d}-{int(m.group(3)):02d}"
+    except Exception as e:
+        print(f"  詳細ページ取得失敗 {cid}: {e}")
+    return ""
+
+
 # ----------------------------------------
 # データ管理
 # ----------------------------------------
@@ -775,6 +791,33 @@ def run():
         meta = work_meta.get(cid, {})
         if not w.get("release_date") and meta.get("release_date"):
             w["release_date"] = meta["release_date"]
+
+    # work_metaに未登録のCIDを登録し、詳細ページから発売日を補完
+    unregistered = [w for w in works if w["cid"] not in work_meta or not work_meta[w["cid"]].get("release_date")]
+    if unregistered:
+        print(f" 未登録作品の発売日取得: {len(unregistered)}件")
+        with sync_playwright() as p2:
+            browser2 = p2.chromium.launch()
+            page2 = browser2.new_page(user_agent=(
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            ))
+            for domain in [".dmm.co.jp", "lovecul.dmm.co.jp"]:
+                page2.context.add_cookies([
+                    {"name": "age_check_done", "value": "1", "domain": domain, "path": "/"},
+                    {"name": "ckcy", "value": "1", "domain": domain, "path": "/"},
+                ])
+            for w in unregistered:
+                cid = w["cid"]
+                release = fetch_release_date_from_detail(page2, cid)
+                if cid not in work_meta:
+                    work_meta[cid] = {"registered_date": today}
+                if release:
+                    work_meta[cid]["release_date"] = release
+                    w["release_date"] = release
+                    print(f"  {cid}: {release}")
+            browser2.close()
+        save_work_meta(work_meta)
 
     # 履歴更新
     history = update_history(history, today, works)
