@@ -415,9 +415,9 @@ tbody tr:hover td{background:transparent}
 <div class="stat-sub">$today_str</div>
 </div>
 <div class="stat-card">
-<div class="stat-label">🔥 セール中</div>
-<div class="stat-value">$sale_count</div>
-<div class="stat-sub">本日ランキング内</div>
+<div class="stat-label">$stat3_label</div>
+<div class="stat-value">$stat3_value</div>
+<div class="stat-sub">$stat3_sub</div>
 </div>
 </div>
 <div class="section">
@@ -589,14 +589,26 @@ def generate_html(works, graph_data, today_str, total_works, new_today, work_met
         is_new = work_meta.get(cid, {}).get("release_date") == today
         ranking_rows.append(make_row(w, rank_change, is_new, f"wc_{i+1}"))
 
-    sale_count = sum(1 for w in top10 if w.get("is_sale"))
+    # 急上昇作品（前日比10位以上UP）
+    rising = [w for w in top10 if prev_map.get(w["cid"], 0) - w["rank"] >= 10]
+
+    if rising:
+        stat3_label = "📈 急上昇作品"
+        stat3_value = str(len(rising))
+        stat3_sub = "前日比10位以上上昇"
+    else:
+        stat3_label = "✨ 新着作品"
+        stat3_value = str(new_today)
+        stat3_sub = "本日発売"
 
     from string import Template
     html = Template(HTML_TEMPLATE).safe_substitute(
         today_str=today_str,
         total_works=total_works,
         new_today=new_today,
-        sale_count=sale_count,
+        stat3_label=stat3_label,
+        stat3_value=stat3_value,
+        stat3_sub=stat3_sub,
         ranking_rows="\n".join(ranking_rows),
         graph_data_json=json.dumps(graph_data, ensure_ascii=False),
     )
